@@ -1408,7 +1408,8 @@ class Session:
                         'New': [result['New'].iloc[-1]],
                     })
                     if not only_one_lap:
-                        result = result.append(new_last).reset_index(drop=True)
+                        result = pd.concat([result, new_last])\
+                            .reset_index(drop=True)
                     else:
                         result = new_last
 
@@ -1489,7 +1490,7 @@ class Session:
                     corrected.loc[i] = row
                     continue
 
-                for key, value in row.iteritems():
+                for key, value in row.items():
                     # correction: update existing values only if new value
                     # is non-na
                     if pd.isna(value):
@@ -1510,7 +1511,6 @@ class Session:
         """Accuracy validation; simples yes/no validation
         Currently only relies on provided information which can't catch all problems"""
         # TODO: check for outliers in lap start position
-        # self.laps['IsAccurate'] = False  # default should be not accurate
         for drv in self.drivers:
             is_accurate = list()
             prev_lap = None
@@ -1548,6 +1548,14 @@ class Session:
 
             if len(is_accurate) > 0:
                 self._laps.loc[self.laps['DriverNumber'] == drv, 'IsAccurate'] = is_accurate
+            else:
+                logging.warning("Failed to perform lap accuracy check - all "
+                                "laps marked as inaccurate.")
+                self.laps['IsAccurate'] = False  # default should be inaccurate
+
+            # necessary to explicitly cast to bool
+            self._laps[['IsAccurate']] \
+                = self._laps[['IsAccurate']].astype(bool)
 
             if integrity_errors > 0:
                 logging.warning(f"Driver {drv: >2}: Lap timing integrity check failed for {integrity_errors} lap(s)")
